@@ -7,9 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "shop_order")
+@Table(name = "orders")
 public class Order extends PanacheEntity {
-
+    @Column(name = "order_date")
     public LocalDateTime orderDate = LocalDateTime.now();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

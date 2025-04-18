@@ -12,358 +12,353 @@ public class Magazine {
     @Produces(MediaType.TEXT_HTML)
     public String getInventory() {
         return """
-                <!DOCTYPE html>
-                                       <html>
-                                       <head>
-                                           <title>Управление складом и заказами</title>
-                                           <style>
-                                               body { font-family: Arial, sans-serif; margin: 20px; }
-                                               .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
-                                               table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-                                               th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                                               th { background-color: #f2f2f2; }
-                                               input, button, select { margin: 5px; padding: 8px; }
-                                               .form-group { margin-bottom: 15px; }
-                                               .notification {
-                                                   position: fixed; top: 20px; right: 20px;
-                                                   padding: 15px; background-color: #4CAF50;
-                                                   color: white; display: none; z-index: 1000;
-                                               }
-                                               .error { color: red; }
-                                           </style>
-                                       </head>
-                                       <body>
-                                           <div id="notification" class="notification"></div>
-                                          
-                                           <div class="section">
-                                               <h2>Товары на складе</h2>
-                                               <div class="form-group">
-                                                   <input type="text" id="itemName" placeholder="Название" required>
-                                                   <input type="number" id="itemQuantity" placeholder="Количество" min="0" required>
-                                                   <input type="number" id="itemPrice" placeholder="Цена" step="0.01" min="0.01" required>
-                                                   <button onclick="addItem()">Добавить товар</button>
-                                               </div>
-                                               <table id="itemsTable">
-                                                   <thead>
-                                                       <tr>
-                                                           <th>ID</th>
-                                                           <th>Название</th>
-                                                           <th>Количество</th>
-                                                           <th>Цена</th>
-                                                           <th>Действия</th>
-                                                       </tr>
-                                                   </thead>
-                                                   <tbody></tbody>
-                                               </table>
-                                           </div>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Магазин</title>
+                <style>
+                    body { font-family: Arial; margin: 20px; }
+                    .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+                    th, td { border: 1px solid #ddd; padding: 8px; }
+                    th { background-color: #f2f2f2; }
+                    button, input, select { padding: 8px; margin: 5px; }
+                    .notification { 
+                        position: fixed; 
+                        top: 20px; 
+                        right: 20px; 
+                        padding: 15px; 
+                        background: #4CAF50; 
+                        color: white; 
+                        display: none;
+                        border-radius: 5px;
+                    }
+                    .error { background: #f44336; }
+                </style>
+            </head>
+            <body>
+                <div id="notification" class="notification"></div>
+                <div id="error-message" style="display:none; color:red; padding:10px; background:#ffecec;"></div>
                 
-                                           <div class="section">
-                                               <h2>Создать заказ</h2>
-                                               <div class="form-group">
-                                                   <select id="itemSelect"></select>
-                                                   <input type="number" id="orderQuantity" placeholder="Количество" min="1" value="1">
-                                                   <button onclick="addToOrder()">Добавить в заказ</button>
-                                                   <button onclick="createOrder()">Создать заказ</button>
-                                               </div>
-                                               <table id="orderItemsTable">
-                                                   <thead>
-                                                       <tr>
-                                                           <th>Товар</th>
-                                                           <th>Количество</th>
-                                                           <th>Действие</th>
-                                                       </tr>
-                                                   </thead>
-                                                   <tbody></tbody>
-                                               </table>
-                                           </div>
+                <div class="section">
+                    <h2>Склад</h2>
+                    <div>
+                        <input type="text" id="itemName" placeholder="Название">
+                        <input type="number" id="itemQuantity" placeholder="Количество" min="0">
+                        <input type="number" id="itemPrice" placeholder="Цена" step="0.01" min="0">
+                        <button onclick="addItem()">Добавить товар</button>
+                    </div>
+                    <table id="itemsTable">
+                        <thead>
+                            <tr><th>ID</th><th>Название</th><th>Кол-во</th><th>Цена</th><th>Действия</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
                 
-                                           <div class="section">
-                                               <h2>Список заказов</h2>
-                                               <table id="ordersTable">
-                                                   <thead>
-                                                       <tr>
-                                                           <th>ID</th>
-                                                           <th>Товары</th>
-                                                           <th>Дата</th>
-                                                           <th>Действие</th>
-                                                       </tr>
-                                                   </thead>
-                                                   <tbody></tbody>
-                                               </table>
-                                           </div>
-                
-                                           <script>
-                                               let currentOrderItems = [];
-                                              
-                                               // Функция для показа уведомлений
-                                               function showNotification(message, isSuccess = true) {
-                                                   const notification = document.getElementById('notification');
-                                                   notification.textContent = message;
-                                                   notification.style.backgroundColor = isSuccess ? '#4CAF50' : '#f44336';
-                                                   notification.style.display = 'block';
-                                                   setTimeout(() => notification.style.display = 'none', 3000);
-                                               }
-                
-                                               // Загрузка данных при старте
-                                               document.addEventListener('DOMContentLoaded', () => {
-                                                   loadItems();
-                                                   loadOrders();
-                                               });
-                
-                                               // ========== Товары ==========
-                                               async function loadItems() {
-                                                   try {
-                                                       const response = await fetch('/api/items');
-                                                       if (!response.ok) throw new Error('Ошибка загрузки товаров');
-                                                      
-                                                       const items = await response.json();
-                                                       renderItems(items);
-                                                       updateItemSelect(items);
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification(error.message, false);
-                                                   }
-                                               }
-                
-                                               function renderItems(items) {
-                                                   const tbody = document.querySelector('#itemsTable tbody');
-                                                   tbody.innerHTML = items.map(item => `
-                                                       <tr>
-                                                           <td>${item.id}</td>
-                                                           <td>${item.name}</td>
-                                                           <td>${item.quantity}</td>
-                                                           <td>${item.price.toFixed(2)}</td>
-                                                           <td>
-                                                               <button onclick="editItem(${item.id})">Изменить</button>
-                                                               <button onclick="deleteItem(${item.id})">Удалить</button>
-                                                           </td>
-                                                       </tr>
-                                                   `).join('');
-                                               }
-                
-                                               function updateItemSelect(items) {
-                                                   const select = document.getElementById('itemSelect');
-                                                   select.innerHTML = items.map(item =>
-                                                       `<option value="${item.id}">${item.name} (${item.quantity} шт.)</option>`
-                                                   ).join('');
-                                               }
-                
-                                               async function addItem() {
-                                                   const item = {
-                                                       name: document.getElementById('itemName').value.trim(),
-                                                       quantity: parseInt(document.getElementById('itemQuantity').value),
-                                                       price: parseFloat(document.getElementById('itemPrice').value)
-                                                   };
-                
-                                                   if (!item.name || isNaN(item.quantity) {
-                                                       showNotification('Заполните все поля корректно', false);
-                                                       return;
-                                                   }
-                
-                                                   try {
-                                                       const response = await fetch('/api/items', {
-                                                           method: 'POST',
-                                                           headers: {
-                                                               'Content-Type': 'application/json',
-                                                               'Accept': 'application/json'
-                                                           },
-                                                           body: JSON.stringify(item)
-                                                       });
-                
-                                                       if (!response.ok) {
-                                                           const error = await response.json();
-                                                           throw new Error(error.error || 'Ошибка сервера');
-                                                       }
-                
-                                                       showNotification('Товар успешно добавлен');
-                                                       loadItems();
-                                                      
-                                                       // Очищаем форму
-                                                       document.getElementById('itemName').value = '';
-                                                       document.getElementById('itemQuantity').value = '';
-                                                       document.getElementById('itemPrice').value = '';
-                                                      
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification(error.message, false);
-                                                   }
-                                               }
-                
-                                               async function editItem(id) {
-                                                   try {
-                                                       const item = await fetch(`/api/items/${id}`).then(r => r.json());
-                                                      
-                                                       const newName = prompt("Название:", item.name);
-                                                       const newQty = prompt("Количество:", item.quantity);
-                                                       const newPrice = prompt("Цена:", item.price);
-                                                      
-                                                       if (newName && newQty && newPrice) {
-                                                           const updatedItem = {
-                                                               name: newName,
-                                                               quantity: parseInt(newQty),
-                                                               price: parseFloat(newPrice)
-                                                           };
-                                                          
-                                                           const response = await fetch(`/api/items/${id}`, {
-                                                               method: 'PUT',
-                                                               headers: { 'Content-Type': 'application/json' },
-                                                               body: JSON.stringify(updatedItem)
-                                                           });
-                                                          
-                                                           if (response.ok) {
-                                                               showNotification('Товар обновлен');
-                                                               loadItems();
-                                                           }
-                                                       }
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification('Ошибка при редактировании', false);
-                                                   }
-                                               }
-                
-                                               async function deleteItem(id) {
-                                                   if (!confirm('Удалить товар?')) return;
-                                                  
-                                                   try {
-                                                       const response = await fetch(`/api/items/${id}`, { method: 'DELETE' });
-                                                      
-                                                       if (response.ok) {
-                                                           showNotification('Товар удален');
-                                                           loadItems();
-                                                       }
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification('Ошибка при удалении', false);
-                                                   }
-                                               }
-                
-                                               // ========== Заказы ==========
-                                               function addToOrder() {
-                                                   const select = document.getElementById('itemSelect');
-                                                   const itemId = parseInt(select.value);
-                                                   const quantity = parseInt(document.getElementById('orderQuantity').value);
-                                                   const itemName = select.options[select.selectedIndex].text.split(' (')[0];
-                                                  
-                                                   if (isNaN(quantity) {
-                                                       showNotification('Введите корректное количество', false);
-                                                       return;
-                                                   }
-                
-                                                   // Проверяем, не добавлен ли уже этот товар
-                                                   const existingItem = currentOrderItems.find(item => item.itemId === itemId);
-                                                   if (existingItem) {
-                                                       existingItem.quantity += quantity;
-                                                   } else {
-                                                       currentOrderItems.push({ itemId, quantity, itemName });
-                                                   }
-                                                  
-                                                   updateOrderTable();
-                                               }
-                
-                                               function updateOrderTable() {
-                                                   const tbody = document.querySelector('#orderItemsTable tbody');
-                                                   tbody.innerHTML = currentOrderItems.map((item, index) => `
-                                                       <tr>
-                                                           <td>${item.itemName}</td>
-                                                           <td>${item.quantity}</td>
-                                                           <td><button onclick="removeFromOrder(${index})">Удалить</button></td>
-                                                       </tr>
-                                                   `).join('');
-                                               }
-                
-                                               function removeFromOrder(index) {
-                                                   currentOrderItems.splice(index, 1);
-                                                   updateOrderTable();
-                                               }
-                
-                                               async function createOrder() {
-                                                   if (currentOrderItems.length === 0) {
-                                                       showNotification('Добавьте товары в заказ', false);
-                                                       return;
-                                                   }
-                
-                                                   const orderRequest = {
-                                                       items: currentOrderItems.map(item => ({
-                                                           itemId: item.itemId,
-                                                           quantity: item.quantity
-                                                       }))
-                                                   };
-                
-                                                   try {
-                                                       const response = await fetch('/api/orders', {
-                                                           method: 'POST',
-                                                           headers: {
-                                                               'Content-Type': 'application/json',
-                                                               'Accept': 'application/json'
-                                                           },
-                                                           body: JSON.stringify(orderRequest)
-                                                       });
-                
-                                                       if (!response.ok) {
-                                                           const error = await response.json();
-                                                           throw new Error(error.error || 'Ошибка сервера');
-                                                       }
-                
-                                                       showNotification('Заказ успешно создан');
-                                                       currentOrderItems = [];
-                                                       updateOrderTable();
-                                                       loadItems();
-                                                       loadOrders();
-                                                      
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification(error.message, false);
-                                                   }
-                                               }
-                
-                                               async function loadOrders() {
-                                                   try {
-                                                       const response = await fetch('/api/orders');
-                                                       if (!response.ok) throw new Error('Ошибка загрузки заказов');
-                                                      
-                                                       const orders = await response.json();
-                                                       renderOrders(orders);
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification(error.message, false);
-                                                   }
-                                               }
-                
-                                               function renderOrders(orders) {
-                                                   const tbody = document.querySelector('#ordersTable tbody');
-                                                   tbody.innerHTML = orders.map(order => `
-                                                       <tr>
-                                                           <td>${order.id}</td>
-                                                           <td>
-                                                               <ul>${order.items.map(item =>\s
-                                                                   `<li>${item.item.name} - ${item.quantity} шт.</li>`
-                                                               ).join('')}</ul>
-                                                           </td>
-                                                           <td>${new Date(order.orderDate).toLocaleString()}</td>
-                                                           <td><button onclick="deleteOrder(${order.id})">Удалить</button></td>
-                                                       </tr>
-                                                   `).join('');
-                                               }
-                
-                                               async function deleteOrder(id) {
-                                                   if (!confirm('Удалить заказ?')) return;
-                                                  
-                                                   try {
-                                                       const response = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-                                                      
-                                                       if (response.ok) {
-                                                           showNotification('Заказ удален');
-                                                           loadOrders();
-                                                           loadItems(); // Обновляем количество товаров
-                                                       }
-                                                   } catch (error) {
-                                                       console.error('Ошибка:', error);
-                                                       showNotification('Ошибка при удалении заказа', false);
-                                                   }
-                                               }
-                                           </script>
-                                       </body>
-                                       </html>
-        """;
+                <div class="section">
+                    <h2>Заказы</h2>
+                    <div>
+                        <select id="itemSelect"></select>
+                        <input type="number" id="orderQuantity" placeholder="Количество" min="1" value="1">
+                        <button onclick="addToOrder()">Добавить в заказ</button>
+                        <button onclick="createOrder()">Создать заказ</button>
+                    </div>
+                    <table id="orderItemsTable">
+                        <thead>
+                            <tr><th>Товар</th><th>Кол-во</th><th>Действие</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    
+                    <h3>Список заказов</h3>
+                    <table id="ordersTable">
+                        <thead>
+                            <tr><th>ID</th><th>Дата</th><th>Товары</th><th>Действие</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <script>
+                fetch('/api/items')
+                        .then(res => res.text())
+                        .then(text => console.log("Длина ответа:", text.length))
+                        .catch(console.error);
+                    // Глобальные переменные
+                    let items = [];
+                    let orders = [];
+                    let currentOrderItems = [];
+                    
+                    // Утилиты
+                    function showNotification(message, isError = false) {
+                        const notification = document.getElementById('notification');
+                        notification.textContent = message;
+                        notification.className = isError ? 'notification error' : 'notification';
+                        notification.style.display = 'block';
+                        
+                        setTimeout(() => {
+                            notification.style.display = 'none';
+                        }, 3000);
+                    }
+                    
+                    // Обработчик ошибок
+                    window.onerror = function(message, source, lineno, colno, error) {
+                        console.error("Global error:", {message, source, lineno, colno, error});
+                        const errorDiv = document.getElementById('error-message');
+                        errorDiv.textContent = `Error: ${message}`;
+                        errorDiv.style.display = 'block';
+                        return true;
+                    };
+                    
+                    // ========== Загрузка данных ==========
+                    async function loadAllData() {
+                             try {
+                                 const itemsRes = await fetch('/api/items');
+                                 const ordersRes = await fetch('/api/orders');
+                                \s
+                                 // Добавьте проверку Content-Type
+                                 const contentType = itemsRes.headers.get('content-type');
+                                 if (!contentType || !contentType.includes('application/json')) {
+                                     throw new Error("Неверный формат ответа");
+                                 }
+                                \s
+                                 const items = await itemsRes.json();
+                                 const orders = await ordersRes.json();
+                                \s
+                                 console.log("Данные получены");
+                                 renderItems(items);
+                                 renderOrders(orders);
+                                \s
+                             } catch (error) {
+                                 console.error("Ошибка загрузки:", error);
+                                 showError("Ошибка загрузки данных");
+                             }
+                         }
+                    
+                    // ========== Товары ==========
+                    function renderItems() {
+                        const tbody = document.querySelector('#itemsTable tbody');
+                        tbody.innerHTML = items.map(item => `
+                            <tr>
+                                <td>${item.id}</td>
+                                <td>${item.name}</td>
+                                <td>${item.quantity}</td>
+                                <td>${item.price.toFixed(2)}</td>
+                                <td>
+                                    <button onclick="editItem(${item.id})">Изменить</button>
+                                    <button onclick="deleteItem(${item.id})">Удалить</button>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                    
+                    async function addItem() {
+                        const name = document.getElementById('itemName').value.trim();
+                        const quantity = parseInt(document.getElementById('itemQuantity').value);
+                        const price = parseFloat(document.getElementById('itemPrice').value);
+                        
+                        if (!name || isNaN(quantity)) {
+                            showNotification("Заполните все поля корректно", true);
+                            return;
+                        }
+                        
+                        try {
+                            const response = await fetch('/api/items', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: name, quantity: quantity, price: price })
+                            });
+                            
+                            if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.error || 'Ошибка сервера');
+                            }
+                            
+                            showNotification("Товар добавлен");
+                            loadAllData();
+                            
+                            // Очищаем поля ввода
+                            document.getElementById('itemName').value = '';
+                            document.getElementById('itemQuantity').value = '';
+                            document.getElementById('itemPrice').value = '';
+                            
+                        } catch (error) {
+                            showNotification("Ошибка: " + error.message, true);
+                        }
+                    }
+                    
+                    async function editItem(id) {
+                        const item = items.find(i => i.id === id);
+                        if (!item) return;
+                        
+                        const newName = prompt('Название:', item.name);
+                        const newQty = prompt('Количество:', item.quantity);
+                        const newPrice = prompt('Цена:', item.price);
+                        
+                        if (newName && newQty && newPrice) {
+                            try {
+                                const response = await fetch('/api/items/' + id, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        name: newName,
+                                        quantity: newQty,
+                                        price: newPrice
+                                    })
+                                });
+                                
+                                if (!response.ok) {
+                                    const error = await response.json();
+                                    throw new Error(error.error || 'Ошибка сервера');
+                                }
+                                
+                                showNotification("Товар обновлен");
+                                loadAllData();
+                                
+                            } catch (error) {
+                                showNotification("Ошибка: " + error.message, true);
+                            }
+                        }
+                    }
+                    
+                    async function deleteItem(id) {
+                        if (confirm('Удалить товар?')) {
+                            try {
+                                const response = await fetch('/api/items/' + id, {
+                                    method: 'DELETE'
+                                });
+                                
+                                if (!response.ok) {
+                                    throw new Error('Ошибка сервера');
+                                }
+                                
+                                showNotification("Товар удален");
+                                loadAllData();
+                                
+                            } catch (error) {
+                                showNotification("Ошибка: " + error.message, true);
+                            }
+                        }
+                    }
+                    
+                    // ========== Заказы ==========
+                    function updateItemSelect() {
+                        const select = document.getElementById('itemSelect');
+                        select.innerHTML = items.map(item => `
+                            <option value="${item.id}">${item.name} (${item.quantity} шт.)</option>
+                        `).join('');
+                    }
+                    
+                    function renderOrders() {
+                        const tbody = document.querySelector('#ordersTable tbody');
+                        tbody.innerHTML = orders.length ? orders.map(order => `
+                            <tr>
+                                <td>${order.id}</td>
+                                <td>${new Date(order.orderDate).toLocaleString()}</td>
+                                <td>
+                                    <ul>${order.items.map(item => `
+                                        <li>${item.item ? item.item.name : 'Товар'} - ${item.quantity} шт.</li>
+                                    `).join('')}</ul>
+                                </td>
+                                <td>
+                                    <button onclick="deleteOrder(${order.id})">Удалить</button>
+                                </td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="4">Нет заказов</td></tr>';
+                    }
+                    
+                    function addToOrder() {
+                        const select = document.getElementById('itemSelect');
+                        const itemId = parseInt(select.value);
+                        const quantity = parseInt(document.getElementById('orderQuantity').value);
+                        const itemName = select.options[select.selectedIndex].text.split(' (')[0];
+                        
+                        if (isNaN(quantity)) {
+                            showNotification("Введите корректное количество", true);
+                            return;
+                        }
+                        
+                        currentOrderItems.push({ itemId: itemId, quantity: quantity, itemName: itemName });
+                        updateOrderTable();
+                    }
+                    
+                    function updateOrderTable() {
+                        const tbody = document.querySelector('#orderItemsTable tbody');
+                        tbody.innerHTML = currentOrderItems.map((item, index) => `
+                            <tr>
+                                <td>${item.itemName}</td>
+                                <td>${item.quantity}</td>
+                                <td><button onclick="removeFromOrder(${index})">Удалить</button></td>
+                            </tr>
+                        `).join('');
+                    }
+                    
+                    function removeFromOrder(index) {
+                        currentOrderItems.splice(index, 1);
+                        updateOrderTable();
+                    }
+                    
+                    async function createOrder() {
+                        if (currentOrderItems.length === 0) {
+                            showNotification("Добавьте товары в заказ", true);
+                            return;
+                        }
+                        
+                        const orderRequest = {
+                            items: currentOrderItems.map(item => ({
+                                itemId: item.itemId,
+                                quantity: item.quantity
+                            }))
+                        };
+                        
+                        try {
+                            const response = await fetch('/api/orders', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(orderRequest)
+                            });
+                            
+                            if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.error || 'Ошибка сервера');
+                            }
+                            
+                            showNotification("Заказ создан");
+                            currentOrderItems = [];
+                            updateOrderTable();
+                            loadAllData();
+                            
+                        } catch (error) {
+                            showNotification("Ошибка: " + error.message, true);
+                        }
+                    }
+                    
+                    async function deleteOrder(id) {
+                        if (confirm('Удалить заказ?')) {
+                            try {
+                                const response = await fetch('/api/orders/' + id, {
+                                    method: 'DELETE'
+                                });
+                                
+                                if (!response.ok) {
+                                    throw new Error('Ошибка сервера');
+                                }
+                                
+                                showNotification("Заказ удален");
+                                loadAllData();
+                                
+                            } catch (error) {
+                                showNotification("Ошибка: " + error.message, true);
+                            }
+                        }
+                    }
+                    
+                    // Инициализация при загрузке страницы
+                    document.addEventListener('DOMContentLoaded', loadAllData);
+                </script>
+            </body>
+            </html>
+            """;
     }
 }

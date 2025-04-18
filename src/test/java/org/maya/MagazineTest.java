@@ -18,9 +18,9 @@ public class MagazineTest {
     @Test
     public void testIndexEndpoint() {
         given()
-                .when().get(baseUrl)  // Используем базовый URL
+                .when().get(baseUrl)
                 .then()
                 .statusCode(200)
-                .body(containsString("Управление складом"));
+                .body(containsString("Магазин"));
     }
 }

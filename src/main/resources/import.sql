@@ -1,6 +1,13 @@
--- This file allow to write SQL commands that will be emitted in test and dev.
--- The commands are commented as their support depends of the database
--- insert into myentity (id, field) values(1, 'field-1');
--- insert into myentity (id, field) values(2, 'field-2');
--- insert into myentity (id, field) values(3, 'field-3');
--- alter sequence myentity_seq restart with 4;
+
+INSERT INTO items (id, name, quantity, price) VALUES
+(1, 'Тестовый ноутбук', 10, 999.99),
+(2, 'Тестовый телефон', 5, 499.50);
+
+INSERT INTO orders (id, order_date) VALUES 
+(1, CURRENT_TIMESTAMP),
+(2, CURRENT_TIMESTAMP - INTERVAL '1 day');
+
+INSERT INTO order_items (id, order_id, item_id, quantity) VALUES 
+(1, 1, 1, 2),
+(2, 1, 2, 1),
+(3, 2, 1, 3);
