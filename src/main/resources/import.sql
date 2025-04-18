@@ -1,13 +1,9 @@
 
 INSERT INTO items (id, name, quantity, price) VALUES
-(1, 'Тестовый ноутбук', 10, 999.99),
-(2, 'Тестовый телефон', 5, 499.50);
+(nextval('order_items_SEQ'), 'Тестовый ноутбук', 10, 999.99),
+(nextval('order_items_SEQ'), 'Тестовый телефон', 5, 499.50);
 
-INSERT INTO orders (id, order_date) VALUES 
-(1, CURRENT_TIMESTAMP),
-(2, CURRENT_TIMESTAMP - INTERVAL '1 day');
 
-INSERT INTO order_items (id, order_id, item_id, quantity) VALUES 
-(1, 1, 1, 2),
-(2, 1, 2, 1),
-(3, 2, 1, 3);
+SELECT setval('items_SEQ', COALESCE((SELECT MAX(id) + 1 FROM items), 1), false);
+SELECT setval('orders_SEQ', COALESCE((SELECT MAX(id) + 1 FROM orders), 1), false);
+SELECT setval('order_items_SEQ', COALESCE((SELECT MAX(id) + 1 FROM order_items), 1), false);
